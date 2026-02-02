@@ -17,33 +17,16 @@ jobs:
   deploy:
     needs: validate
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        id: node-setup
-        uses: ./.github/actions/node-setup-action
-        with:
-            node-version: '22'
-
-      - name: Prisma Generate
-        run: npm run prisma:generate
-
-      - name: Run Build
-        run: npm run build
-
-      - name: Test Production Start
+      - name: Deploy Application to Production
+        env:
+          DEPLOY_SERVER_SSH_PEM: ${{ secrets.DEPLOY_SERVER_SSH_PEM }}
+          TAG: ${{ github.ref_name }}
         run: |
-          npm run start:prod &
-          SERVER_PID=$!
-          sleep 5
-          if kill -0 $SERVER_PID 2>/dev/null; then
-            echo "Production server started successfully"
-            kill $SERVER_PID
-          else
-            echo "Production server failed to start"
-            exit 1
-          fi
+          echo Deploy $TAG
+          echo "$DEPLOY_SERVER_SSH_PEM" > deploy_key.pem
+          chmod 400 deploy_key.pem
+          ssh -o StrictHostKeyChecking=no -i deploy_key.pem ubuntu@13.228.40.10 'bash -s' < ./scripts/deploy.sh "$TAG"
