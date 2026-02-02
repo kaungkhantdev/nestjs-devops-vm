@@ -1,27 +1,19 @@
-name: Test
+name: Reusable Automated Tests
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches:
-      - main
-      - develop
-  workflow_dispatch:
-
-concurrency:
-  group: ${{github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
+  workflow_call:
+    secrets:
+      POSTGRES_USER:
+        required: true
+      POSTGRES_PASSWORD:
+        required: true
+      
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test"
+      DATABASE_URL: "postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/test"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -54,7 +46,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test"
+      DATABASE_URL: "postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/test"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -76,22 +68,22 @@ jobs:
     needs:
       - build
       - lint
-    # services:
-    #   postgres:
-    #     image: postgres:16
-    #     env:
-    #       POSTGRES_USER: postgres
-    #       POSTGRES_PASSWORD: postgres
-    #       POSTGRES_DB: test
-    #     ports:
-    #       - 5432:5432
-    #     options: >-
-    #       --health-cmd="pg_isready"
-    #       --health-interval=10s
-    #       --health-timeout=5s
-    #       --health-retries=3
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER:  ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     env:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test"
+      DATABASE_URL: "postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/test"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
